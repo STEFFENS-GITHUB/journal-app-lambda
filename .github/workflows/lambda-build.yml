@@ -1,0 +1,36 @@
+name: Display-Get Lambda Build
+on:
+  push:
+    branches:
+    - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout git repository
+      uses: actions/checkout@v6
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v6
+      with:
+        role-to-assume: arn:aws:iam::476140239102:role/github-actions-role
+        aws-region: us-east-1
+    
+    - name: Build zip
+      run: zip latest.zip main.py
+    
+    - name: Upload to s3
+      run: aws s3 cp latest.zip s3://$BUCKET/latest.zip
+  
+    - name: Update Lambda
+      run: |
+        aws lambda update-function-code \
+          --function-name display-get-lambda \
+          --s3-bucket display-get-lambda-bucket \
+          --s3-key latest.zip
