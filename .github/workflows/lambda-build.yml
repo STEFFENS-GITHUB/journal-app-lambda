@@ -26,7 +26,7 @@ jobs:
       run: zip latest.zip main.py
     
     - name: Upload to s3
-      run: aws s3 cp latest.zip s3://$BUCKET/latest.zip
+      run: aws s3 cp latest.zip s3://display-get-lambda-bucket/latest.zip
   
     - name: Update Lambda
       run: |
