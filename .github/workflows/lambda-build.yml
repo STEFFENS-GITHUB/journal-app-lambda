@@ -30,7 +30,11 @@ jobs:
   
     - name: Update Lambda
       run: |
-        aws lambda update-function-code \
-          --function-name display-get-lambda \
-          --s3-bucket display-get-lambda-bucket \
-          --s3-key latest.zip
+        if aws lambda get-function --function-name display-get-lambda >/dev/null 2>&1; then
+          aws lambda update-function-code \
+            --function-name display-get-lambda \
+            --s3-bucket display-get-lambda-bucket \
+            --s3-key latest.zip
+        else
+          echo "Lambda doesn't exist yet, skipping update"
+        fi
