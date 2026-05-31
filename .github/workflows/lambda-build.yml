@@ -19,22 +19,32 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v6
       with:
-        role-to-assume: arn:aws:iam::476140239102:role/github-actions-role
+        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
         aws-region: us-east-1
-    
+
     - name: Build zip
       run: zip latest.zip main.py
-    
+
     - name: Upload to s3
-      run: aws s3 cp latest.zip s3://display-get-lambda-bucket/latest.zip
-  
+      run: aws s3 cp latest.zip s3://${{ vars.LAMBDA_BUCKET_NAME }}/latest.zip
+
     - name: Update Lambda
+      id: update-lambda
       run: |
-        if aws lambda get-function --function-name display-get-lambda >/dev/null 2>&1; then
-          aws lambda update-function-code \
-            --function-name display-get-lambda \
-            --s3-bucket display-get-lambda-bucket \
-            --s3-key latest.zip
-        else
-          echo "Lambda doesn't exist yet, skipping update"
-        fi
+        echo "VERSION=$(aws lambda update-function-code \
+          --function-name ${{ vars.LAMBDA_FUNCTION_NAME }} \
+          --s3-bucket ${{ vars.LAMBDA_BUCKET_NAME }} \
+          --s3-key latest.zip \
+          --publish \
+          --query 'Version' \
+          --output text)" >> $GITHUB_OUTPUT
+
+    - name: Wait for Lambda update
+      run: aws lambda wait function-updated --function-name ${{ vars.LAMBDA_FUNCTION_NAME }}
+
+    - name: Update prod alias
+      run: |
+        aws lambda update-alias \
+          --function-name ${{ vars.LAMBDA_FUNCTION_NAME }} \
+          --name prod \
+          --function-version ${{ steps.update-lambda.outputs.VERSION }}
