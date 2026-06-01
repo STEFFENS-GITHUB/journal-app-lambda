@@ -38,12 +38,13 @@ jobs:
     - name: Publish dependencies layer
       id: publish-layer
       run: |
-        echo "LAYER_ARN=$(aws lambda publish-layer-version \
+        LAYER_ARN=$(aws lambda publish-layer-version \
           --layer-name ${{ vars.LAMBDA_FUNCTION_NAME }}-deps \
           --content S3Bucket=${{ vars.LAMBDA_BUCKET_NAME }},S3Key=layer.zip \
           --compatible-runtimes python3.9 \
           --query 'LayerVersionArn' \
-          --output text)" >> $GITHUB_OUTPUT
+          --output text)
+        echo "LAYER_ARN=$LAYER_ARN" >> $GITHUB_OUTPUT
 
     - name: Attach layer to Lambda
       run: |
@@ -57,13 +58,14 @@ jobs:
     - name: Update Lambda
       id: update-lambda
       run: |
-        echo "VERSION=$(aws lambda update-function-code \
+        VERSION=$(aws lambda update-function-code \
           --function-name ${{ vars.LAMBDA_FUNCTION_NAME }} \
           --s3-bucket ${{ vars.LAMBDA_BUCKET_NAME }} \
           --s3-key latest.zip \
           --publish \
           --query 'Version' \
-          --output text)" >> $GITHUB_OUTPUT
+          --output text)
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
     - name: Wait for Lambda update
       run: aws lambda wait function-updated --function-name ${{ vars.LAMBDA_FUNCTION_NAME }}
