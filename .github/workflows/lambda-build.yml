@@ -22,11 +22,37 @@ jobs:
         role-to-assume: ${{ vars.AWS_ROLE_ARN }}
         aws-region: us-east-1
 
-    - name: Build zip
+    - name: Build function zip
       run: zip latest.zip main.py
 
+    - name: Build dependencies layer
+      run: |
+        pip install -r requirements.txt -t python
+        zip -r layer.zip python
+
     - name: Upload to s3
-      run: aws s3 cp latest.zip s3://${{ vars.LAMBDA_BUCKET_NAME }}/latest.zip
+      run: |
+        aws s3 cp latest.zip s3://${{ vars.LAMBDA_BUCKET_NAME }}/latest.zip
+        aws s3 cp layer.zip s3://${{ vars.LAMBDA_BUCKET_NAME }}/layer.zip
+
+    - name: Publish dependencies layer
+      id: publish-layer
+      run: |
+        echo "LAYER_ARN=$(aws lambda publish-layer-version \
+          --layer-name ${{ vars.LAMBDA_FUNCTION_NAME }}-deps \
+          --content S3Bucket=${{ vars.LAMBDA_BUCKET_NAME }},S3Key=layer.zip \
+          --compatible-runtimes python3.9 \
+          --query 'LayerVersionArn' \
+          --output text)" >> $GITHUB_OUTPUT
+
+    - name: Attach layer to Lambda
+      run: |
+        aws lambda update-function-configuration \
+          --function-name ${{ vars.LAMBDA_FUNCTION_NAME }} \
+          --layers ${{ steps.publish-layer.outputs.LAYER_ARN }}
+
+    - name: Wait for Lambda config update
+      run: aws lambda wait function-updated --function-name ${{ vars.LAMBDA_FUNCTION_NAME }}
 
     - name: Update Lambda
       id: update-lambda
