@@ -41,7 +41,7 @@ jobs:
         LAYER_ARN=$(aws lambda publish-layer-version \
           --layer-name ${{ vars.LAMBDA_FUNCTION_NAME }}-deps \
           --content S3Bucket=${{ vars.LAMBDA_BUCKET_NAME }},S3Key=layer.zip \
-          --compatible-runtimes python3.9 \
+          --compatible-runtimes python3.12 \
           --query 'LayerVersionArn' \
           --output text)
         echo "LAYER_ARN=$LAYER_ARN" >> $GITHUB_OUTPUT
